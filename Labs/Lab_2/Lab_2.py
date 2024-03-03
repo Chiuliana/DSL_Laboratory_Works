@@ -15,6 +15,25 @@ class FiniteAutomatom:
         self.q0 = 'q0'
         self.F = ['q3']
 
+  def convert_to_grammar(self):
+        S = self.Q[0]
+        V_n = self.Q
+        V_t = self.Sigma
+        P = []
+        for state in self.Q:
+            for symbol in self.Sigma:
+                if (state, symbol) in self.Delta:
+                    if len(self.Delta[(state, symbol)]) > 1:
+                        for i in range(len(self.Delta[(state, symbol)])):
+                            next_state = self.Delta[(state, symbol)][i]
+                            P.append((state, symbol, next_state))
+                    else:
+                        next_state = self.Delta[(state, symbol)][0]
+                        P.append((state, symbol, next_state))
+        for final_state in self.F:
+            P.append((final_state, '', 'e'))
+        return Grammar(S, V_n, V_t, P)
+
 class Grammar:
     def __init__(self, S, V_n, V_t, P):
         self.S = S
