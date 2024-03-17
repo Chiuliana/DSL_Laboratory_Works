@@ -1,8 +1,9 @@
-import re
+import re  # Importing regular expression library
 
 # CONSTANTS
 DIGITS = '0123456789'
 KEYWORDS = {'if', 'while', 'return'}
+
 
 # ERRORS
 class Error:
@@ -21,6 +22,7 @@ class Error:
 class IllegalCharError(Error):
     def __init__(self, pos_start, pos_end, details):
         super().__init__(pos_start, pos_end, 'Illegal Character', details)
+
 
 # POSITION
 class Position:
@@ -43,6 +45,8 @@ class Position:
 
     def copy(self):
         return Position(self.idx, self.ln, self.col, self.fn, self.ftxt)  # Creating a copy of the current position
+
+
 # TOKENS
 class Token:
     def __init__(self, type_, value=None):
@@ -82,6 +86,37 @@ TT_SEMICOLON = 'SEMICOLON'
 TT_LBRACE = 'LEFT_BRACE'
 TT_RBRACE = 'RIGHT_BRACE'
 
+# Regular expressions for token patterns
+TOKEN_REGEX = r'(?P<TOKEN>{})'
+TOKEN_PATTERNS = {
+    TT_INT: r'\d+',
+    TT_FLOAT: r'\d+\.\d+',
+    TT_PLUS: r'\+',
+    TT_MINUS: r'-',
+    TT_MUL: r'\*',
+    TT_DIV: r'/',
+    TT_LPAREN: r'\(',
+    TT_RPAREN: r'\)',
+    TT_IDENTIFIER: r'[a-zA-Z_][a-zA-Z0-9_]*',
+    TT_STRING: r'"([^\\"]|\\")*"',
+    TT_COMMA: r',',
+    TT_ASSIGN: r'=',
+    TT_EQUAL: r'==',
+    TT_LESS: r'<',
+    TT_GREATER: r'>',
+    TT_LESS_EQUAL: r'<=',
+    TT_GREATER_EQUAL: r'>=',
+    TT_CHAR: r'char',
+    TT_EOF: r'EOF',
+    TT_SPACE: r'\s+',
+    TT_NEWLINE: r'\n',
+    TT_COLON: r':',
+    TT_SEMICOLON: r';',
+    TT_LBRACE: r'{',
+    TT_RBRACE: r'}'
+}
+
+
 # LEXER
 class Lexer:
     def __init__(self, fn, text):
@@ -118,6 +153,7 @@ class Lexer:
                         # If end of file is reached before closing '*/'
                         raise Exception("Unterminated multi-line comment")
                 self.advance()  # Skip closing '*/'
+
     # Converts input text into tokens.
     def make_tokens(self):
         tokens = []
@@ -134,12 +170,70 @@ class Lexer:
             elif self.current_char == '+':
                 tokens.append(Token(TT_PLUS))
                 self.advance()
-            # Other cases...
-            # Parentheses and punctuation tokens...
+            elif self.current_char == '-':
+                tokens.append(Token(TT_MINUS))
+                self.advance()
+            elif self.current_char == '*':
+                tokens.append(Token(TT_MUL))
+                self.advance()
+            elif self.current_char == '/':
+                # Handling comments
+                if self.peek() == '/':
+                    self.skip_comment()
+                else:
+                    tokens.append(Token(TT_DIV))
+                    self.advance()
+            # Parentheses and punctuation tokens
             elif self.current_char == '(':
                 tokens.append(Token(TT_LPAREN))
                 self.advance()
-            # Identifiers...
+            elif self.current_char == ')':
+                tokens.append(Token(TT_RPAREN))
+                self.advance()
+            elif self.current_char == ',':
+                tokens.append(Token(TT_COMMA))
+                self.advance()
+            elif self.current_char == '=':
+                tokens.append(Token(TT_ASSIGN))
+                self.advance()
+            elif self.current_char == '<':
+                self.advance()
+                if self.current_char == '=':
+                    tokens.append(Token(TT_LESS_EQUAL))
+                    self.advance()
+                else:
+                    tokens.append(Token(TT_LESS))
+            elif self.current_char == '>':
+                self.advance()
+                if self.current_char == '=':
+                    tokens.append(Token(TT_GREATER_EQUAL))
+                    self.advance()
+                else:
+                    tokens.append(Token(TT_GREATER))
+            elif self.current_char == '"':
+                tokens.append(self.make_string())
+            elif self.current_char == 'c':
+                tokens.append(self.make_char(errors))
+            # Newline and punctuation tokens
+            elif self.current_char == '\n':
+                tokens.append(Token(TT_NEWLINE))
+                self.advance()
+            elif self.current_char == ':':
+                tokens.append(Token(TT_COLON))
+                self.advance()
+            elif self.current_char == ';':
+                tokens.append(Token(TT_SEMICOLON))
+                self.advance()
+            elif self.current_char == '{':
+                tokens.append(Token(TT_LBRACE))
+                self.advance()
+            elif self.current_char == '}':
+                tokens.append(Token(TT_RBRACE))
+                self.advance()
+            # Identifiers
+            elif re.match(r'[a-zA-Z_]', self.current_char):
+                tokens.append(self.make_identifier())
+            # Handling illegal characters
             else:
                 pos_start = self.pos.copy()
                 char = self.current_char
@@ -148,3 +242,84 @@ class Lexer:
 
         tokens.append(Token(TT_EOF))  # Adding end of file token
         return tokens, errors
+
+    # Creates a numeric token.
+    def make_number(self):
+        num_str = ''
+
+        while self.current_char is not None and re.match(r'\d|\.', self.current_char):
+            num_str += self.current_char
+            self.advance()
+
+        if '.' in num_str:
+            return Token(TT_FLOAT, float(num_str))
+        else:
+            return Token(TT_INT, int(num_str))
+
+    # Creates a string token.
+    def make_string(self):
+        string = ''
+        escape_character = False
+        self.advance()
+
+        escape_characters = {
+            'n': '\n',
+            't': '\t'
+        }
+
+        while self.current_char is not None and (self.current_char != '"' or escape_character):
+            if escape_character:
+                string += escape_characters.get(self.current_char, self.current_char)
+                escape_character = False
+            else:
+                if self.current_char == '\\':
+                    escape_character = True
+                else:
+                    string += self.current_char
+            self.advance()
+
+        self.advance()  # Closing quote
+        return Token(TT_STRING, string)
+
+    #   Creates a character token.
+    def make_char(self, errors):
+        char = 'c'
+        self.advance()
+        if self.current_char == 'h':
+            char += 'h'
+            self.advance()
+            if self.current_char == 'a':
+                char += 'a'
+                self.advance()
+                if self.current_char == 'r':
+                    char += 'r'
+                    self.advance()
+                    return Token(TT_CHAR, char)
+
+        pos_start = self.pos.copy()
+        char = self.current_char
+        self.advance()
+        errors.append(IllegalCharError(pos_start, self.pos, "'" + char + "'"))
+
+    # Creates an identifier token.
+    def make_identifier(self):
+        id_str = ''
+        while self.current_char is not None and re.match(r'[a-zA-Z0-9_]', self.current_char):
+            id_str += self.current_char
+            self.advance()
+        if id_str in KEYWORDS:
+            return Token(TT_KEYWORD, id_str)
+        return Token(TT_IDENTIFIER, id_str)
+
+    # Peeks at the next character.
+    def peek(self):
+        peek_pos = self.pos.idx + 1
+        if peek_pos < len(self.text):
+            return self.text[peek_pos]
+        return None
+
+# RUN
+def run(fn, text):
+    lexer = Lexer(fn, text)
+    tokens, errors = lexer.make_tokens()
+    return tokens, errors
