@@ -1,6 +1,5 @@
 import test
 
-# Run loop
 print("Press 'q' if you want to quit.")
 while True:
     text = input('test > ')

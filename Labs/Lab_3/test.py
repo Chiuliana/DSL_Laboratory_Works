@@ -318,8 +318,10 @@ class Lexer:
             return self.text[peek_pos]
         return None
 
+
 # RUN
 def run(fn, text):
     lexer = Lexer(fn, text)
     tokens, errors = lexer.make_tokens()
     return tokens, errors
+
