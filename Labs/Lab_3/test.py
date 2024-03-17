@@ -96,7 +96,28 @@ class Lexer:
         self.current_char = self.text[self.pos.idx] if self.pos.idx < len(
             self.text) else None  # Update current character
 
-
+    def skip_comment(self):
+        if self.current_char == '/':
+            self.advance()
+            if self.current_char == '/':
+                # Single-line comment, skip until the end of line
+                while self.current_char and self.current_char != '\n':
+                    self.advance()
+            elif self.current_char == '*':
+                # Multi-line comment, skip until '*/'
+                depth = 1
+                while depth > 0:
+                    self.advance()
+                    if self.current_char == '/' and self.peek() == '*':
+                        depth += 1
+                    elif self.current_char == '*' and self.peek() == '/':
+                        depth -= 1
+                        self.advance()
+                        self.advance()
+                    elif not self.current_char:
+                        # If end of file is reached before closing '*/'
+                        raise Exception("Unterminated multi-line comment")
+                self.advance()  # Skip closing '*/'
     # Converts input text into tokens.
     def make_tokens(self):
         tokens = []
