@@ -138,23 +138,27 @@ class Lexer:
                 # Single-line comment, skip until the end of line
                 while self.current_char and self.current_char != '\n':
                     self.advance()
+                self.advance()  # Move past the newline character
             elif self.current_char == '*':
                 # Multi-line comment, skip until '*/'
                 depth = 1
+                self.advance()  # Move past the '*' character
                 while depth > 0:
-                    self.advance()
-                    if self.current_char == '/' and self.peek() == '*':
-                        depth += 1
-                    elif self.current_char == '*' and self.peek() == '/':
+                    if self.current_char == '*' and self.peek() == '/':
                         depth -= 1
                         self.advance()
-                        self.advance()
-                    elif not self.current_char:
-                        # If end of file is reached before closing '*/'
+                        self.advance()  # Move past the '*' and '/' characters
+                    elif self.current_char == '\n':
+                        self.advance()  # Move past the newline character
+                    elif self.current_char:
+                        self.advance()  # Move past other characters inside comments
+                    else:
                         raise Exception("Unterminated multi-line comment")
-                self.advance()  # Skip closing '*/'
+            else:
+                # This is not a comment, rewind to the previous character
+                self.pos.advance(self.current_char)
 
-    # Converts input text into tokens.
+                # Converts input text into tokens.
     def make_tokens(self):
         tokens = []
         errors = []
@@ -218,6 +222,7 @@ class Lexer:
             elif self.current_char == '\n':
                 tokens.append(Token(TT_NEWLINE))
                 self.advance()
+
             elif self.current_char == ':':
                 tokens.append(Token(TT_COLON))
                 self.advance()
