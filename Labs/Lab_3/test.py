@@ -79,3 +79,17 @@ TT_KEYWORD = 'KEYWORD'
 TT_SEMICOLON = 'SEMICOLON'
 TT_LBRACE = 'LEFT_BRACE'
 TT_RBRACE = 'RIGHT_BRACE'
+
+# LEXER
+class Lexer:
+    def __init__(self, fn, text):
+        self.fn = fn
+        self.text = text  # Input text
+        self.pos = Position(-1, 0, -1, fn, text)  # Starting position
+        self.current_char = None
+        self.advance()  # Move to the first character
+
+    def advance(self):
+        self.pos.advance(self.current_char)  # Move to the next position
+        self.current_char = self.text[self.pos.idx] if self.pos.idx < len(
+            self.text) else None  # Update current character
