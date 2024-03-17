@@ -1,3 +1,5 @@
+import re
+
 # CONSTANTS
 DIGITS = '0123456789'
 KEYWORDS = {'if', 'while', 'return'}
@@ -93,3 +95,35 @@ class Lexer:
         self.pos.advance(self.current_char)  # Move to the next position
         self.current_char = self.text[self.pos.idx] if self.pos.idx < len(
             self.text) else None  # Update current character
+
+
+    # Converts input text into tokens.
+    def make_tokens(self):
+        tokens = []
+        errors = []
+
+        while self.current_char is not None:
+            # Ignore whitespace characters
+            if self.current_char in ' \t':
+                self.advance()
+            # Numeric tokens
+            elif re.match(r'\d', self.current_char):
+                tokens.append(self.make_number())
+            # Operator tokens
+            elif self.current_char == '+':
+                tokens.append(Token(TT_PLUS))
+                self.advance()
+            # Other cases...
+            # Parentheses and punctuation tokens...
+            elif self.current_char == '(':
+                tokens.append(Token(TT_LPAREN))
+                self.advance()
+            # Identifiers...
+            else:
+                pos_start = self.pos.copy()
+                char = self.current_char
+                self.advance()
+                errors.append(IllegalCharError(pos_start, self.pos, "'" + char + "'"))
+
+        tokens.append(Token(TT_EOF))  # Adding end of file token
+        return tokens, errors
