@@ -1,163 +1,161 @@
 class Grammar:
-    def __init__(self, non_terminals=None, terminals=None, rules=None):
-        if non_terminals is None:
-            non_terminals = []
-        if terminals is None:
-            terminals = []
-        if rules is None:
-            rules = {}
-        self.non_terminals = non_terminals
-        self.terminals = terminals
-        self.rules = rules
+    def __init__(self):
+        self.P = {
+            'S': ['dB', 'A'],
+            'A': ['d', 'dS', 'aBdB'],
+            'B': ['a', 'aS', 'AC'],
+            'D': ['AB'],
+            'C': ['bC', 'epsilon']
+        }
+        self.V_N = ['S', 'A', 'B', 'C', 'D']
+        self.V_T = ['a', 'b', 'd']
 
-    def remove_epsilon(self):
+    def elim_epsilon(self):
         nt_epsilon = []
-        for key, value in self.rules.items():
+        for key, value in self.P.items():
             s = key
             productions = value
             for p in productions:
                 if p == 'epsilon':
                     nt_epsilon.append(s)
 
-        updated_grammar = self.rules.copy()
-        for key, value in self.rules.items():
+        for key, value in self.P.items():
             for ep in nt_epsilon:
                 for v in value:
                     prod_copy = v
                     if ep in prod_copy:
                         for c in prod_copy:
                             if c == ep:
-                                updated_grammar[key].append(prod_copy.replace(c, ''))
-        for key, value in self.rules.items():
+                                value.append(prod_copy.replace(c, ''))
+
+        P1 = self.P.copy()
+        for key, value in self.P.items():
             if key in nt_epsilon and len(value) < 2:
-                del updated_grammar[key]
+                del P1[key]
             else:
                 for v in value:
                     if v == 'epsilon':
-                        updated_grammar[key].remove(v)
-        self.rules = updated_grammar.copy()
-        return updated_grammar
+                        P1[key].remove(v)
 
-    def eliminate_unit_prod(self):
-        updated_grammar = self.rules.copy()
-        for key, value in self.rules.items():
+        print(f"1. Eliminating epsilon productions:")
+        for key, value in P1.items():
+            print(f"{key} -> {' | '.join(value)}")
+        print("------------------------------------------------")
+        self.P = P1.copy()
+        return P1
+
+    def elim_unit_prod(self):
+        P2 = self.P.copy()
+        for key, value in self.P.items():
             for v in value:
-                if len(v) == 1 and v in self.non_terminals:
-                    updated_grammar[key].remove(v)
-                    for p in self.rules[v]:
-                        updated_grammar[key].append(p)
-        self.rules = updated_grammar.copy()
-        return updated_grammar
+                if len(v) == 1 and v in self.V_N:
+                    P2[key].remove(v)
+                    for p in self.P[v]:
+                        P2[key].append(p)
+        print(f"2. Eliminating unit productions:")
+        for key, value in P2.items():
+            print(f"{key} -> {' | '.join(value)}")
+        print("------------------------------------------------")
+        self.P = P2.copy()
+        return P2
 
-    def eliminate_inaccessible(self):
-        reachable = set()
-        reachable.add(self.non_terminals[0])  # Start symbol
-        updated_grammar = {}
-        while True:
-            old_len = len(reachable)
-            for variable, productions in self.rules.items():
-                if variable in reachable:
-                    for production in productions:
-                        for symbol in production:
-                            if symbol in self.non_terminals:
-                                reachable.add(symbol)
-            if len(reachable) == old_len:
-                break
-        for variable, productions in self.rules.items():
-            if variable in reachable:
-                updated_grammar[variable] = productions
-        self.rules = updated_grammar.copy()
-        return updated_grammar
+    def elim_inaccesible_symb(self):
+        P3 = self.P.copy()
+        accesible_symbols = self.V_N
+        for key, value in self.P.items():
+            for v in value:
+                for s in v:
+                    if s in accesible_symbols:
+                        accesible_symbols.remove(s)
 
-    def remove_unprod(self):
-        productive = set()
-        updated_grammar = self.rules.copy()
-        terminals = {symbol for productions in self.rules.values() for production in productions for symbol in
-                     production if symbol not in self.non_terminals}
+        for el in accesible_symbols:
+            del P3[el]
 
-        while True:
-            old_len = len(productive)
-            for variable, productions in updated_grammar.items():
-                for production in productions:
-                    if all(symbol in productive or symbol in terminals for symbol in production):
-                        productive.add(variable)
-            if len(productive) == old_len:
-                break
+        print(f"3. Eliminating inaccessible symbols:")
+        for key, value in P3.items():
+            print(f"{key} -> {' | '.join(value)}")
+        print("------------------------------------------------")
+        self.P = P3.copy()
+        return P3
 
-        for variable, productions in self.rules.items():
-            if variable in productive:
-                updated_productions = []
-                for production in productions:
-                    if all(symbol in productive or symbol in terminals for symbol in production):
-                        updated_productions.append(production)
-                updated_grammar[variable] = updated_productions
-            else:
-                updated_grammar.pop(variable, None)
-
-        self.rules = updated_grammar.copy()
-        return updated_grammar
-
-    def transform_to_cnf(self):
-        rhs_to_non_terminal = {}
-        old_non_terminals = list(self.rules)
-
-        new_rules = {}
-        for non_terminal in list(self.rules):
-            new_rules[non_terminal] = set()
-            for production in self.rules[non_terminal]:
-                while len(production) > 2:
-                    first_two_symbols = production[:2]
-
-                    if first_two_symbols in rhs_to_non_terminal:
-                        new_non_terminal = rhs_to_non_terminal[first_two_symbols]
-                    else:
-                        new_non_terminal = self.create_new_non_terminal()
-                        new_rules[new_non_terminal] = {first_two_symbols}
-                        rhs_to_non_terminal[first_two_symbols] = new_non_terminal
-
-                    production = new_non_terminal + production[2:]
-
-                new_rules[non_terminal].add(production)
-
-        for non_terminal, productions in list(new_rules.items()):
-            temp_productions = productions.copy()
-            for production in temp_productions:
-                if len(production) == 2 and any(symbol in self.terminals for symbol in production):
-                    new_production = []
-                    for symbol in production:
-                        if symbol in self.terminals:
-                            if symbol in rhs_to_non_terminal:
-                                new_non_terminal = rhs_to_non_terminal[symbol]
-                            else:
-                                new_non_terminal = self.create_new_non_terminal()
-                                new_rules[new_non_terminal] = {symbol}
-                                rhs_to_non_terminal[symbol] = new_non_terminal
-                            new_production.append(new_non_terminal)
+    def elin_unnprod_symb(self):
+        P4 = self.P.copy()
+        for key, value in self.P.items():
+            count = 0
+            for v in value:
+                if len(v) == 1 and v in self.V_T:
+                    count += 1
+            if count == 0:
+                del P4[key]
+                for k, v in self.P.items():
+                    for e in v:
+                        if k == key:
+                            break
                         else:
-                            new_production.append(symbol)
-                    productions.remove(production)
-                    productions.add(''.join(new_production))
+                            if key in e:
+                                P4[key].remove(e)
 
-        self.rules = {nt: new_rules[nt] for nt in old_non_terminals +
-                      list(set(new_rules) - set(old_non_terminals))}
-        return self.rules
+        for key, value in self.P.items():
+            for v in value:
+                for c in v:
+                    if c.isupper() and c not in P4.keys():
+                        P4[key].remove(v)
+                        break
 
-    def create_new_non_terminal(self):
-        alphabet = '0123456789ABCDEFGHIJKLMNOPQRSTUVWXYZ'
-        for letter in alphabet:
-            if letter not in self.non_terminals:
-                self.non_terminals.append(letter)
-                return letter
-        for letter in alphabet:
-            for num in range(100):
-                new_symbol = f'{letter}{num}'
-                if new_symbol not in self.non_terminals:
-                    self.non_terminals.append(new_symbol)
-                    return new_symbol
-        raise ValueError("Exhausted all possible non-terminal symbols.")
+        print(f"4. Eliminating unproductive symbols:")
+        for key, value in P4.items():
+            print(f"{key} -> {' | '.join(value)}")
+        print("------------------------------------------------")
+        self.P = P4.copy()
+        return P4
 
-    def print_grammar(self):
-        for variable, productions in self.rules.items():
-            print(f"{variable} -> {' | '.join(productions)}")
+    def transf_to_cnf(self):
+        P5 = self.P.copy()
+        temp = {}
+        vocabulary = ['A', 'B', 'C', 'D', 'E', 'F', 'G', 'H', 'I', 'J', 'K', 'L', 'M', 'N', 'O', 'P', 'Q', 'R', 'S',
+                      'T', 'U', 'V', 'W', 'X', 'Y', 'Z']
+        free_symbols = [v for v in vocabulary if v not in self.P.keys()]
+        for key, value in self.P.items():
+            for v in value:
+                if (len(v) == 1 and v in self.V_T) or (len(v) == 2 and v.isupper()):
+                    continue
+                else:
+                    left = v[:len(v) // 2]
+                    right = v[len(v) // 2:]
+                    if left in temp.values():
+                        temp_key1 = ''.join([i for i in temp.keys() if temp[i] == left])
+                    else:
+                        temp_key1 = free_symbols.pop(0)
+                        temp[temp_key1] = left
+                    if right in temp.values():
+                        temp_key2 = ''.join([i for i in temp.keys() if temp[i] == right])
+                    else:
+                        temp_key2 = free_symbols.pop(0)
+                        temp[temp_key2] = right
 
+                    P5[key] = [temp_key1 + temp_key2 if item == v else item for item in P5[key]]
 
+        for key, value in temp.items():
+            P5[key] = [value]
+
+        print(f"5. Obtain Chomsky Normal Form(CNF):")
+        for key, value in P5.items():
+            print(f"{key} -> {' | '.join(value)}")
+        print("------------------------------------------------")
+        return P5
+
+    def ReturnProductions(self):
+        print(f"Initial Grammar:")
+        for key, value in self.P.items():
+            print(f"{key} -> {' | '.join(value)}")
+        print("------------------------------------------------")
+        P1 = self.elim_epsilon()
+        P2 = self.elim_unit_prod()
+        P3 = self.elim_inaccesible_symb()
+        P4 = self.elin_unnprod_symb()
+        P5 = self.transf_to_cnf()
+        return P1, P2, P3, P4, P5
+
+if __name__ == "__main__":
+    g = Grammar()
+    P1, P2, P3, P4, P5 = g.ReturnProductions()
