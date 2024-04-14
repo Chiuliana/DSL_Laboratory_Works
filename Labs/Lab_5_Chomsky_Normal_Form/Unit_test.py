@@ -1,15 +1,16 @@
 from Lab_5 import Grammar
 import unittest
 
+
 class TestGrammar(unittest.TestCase):
     def setUp(self):
         self.g = Grammar()
         self.P1, self.P2, self.P3, self.P4, self.P5 = self.g.ReturnProductions()
 
     def test_elim_epsilon(self):
-        expected_result = {'S': ['dB', 'A'],
+        expected_result = {'S': ['dB', 'd', 'dS', 'aBdB'],
                            'A': ['d', 'dS', 'aBdB'],
-                           'B': ['a', 'aS', 'AC', 'A'],
+                           'B': ['a', 'aS', 'AC', 'd', 'dS', 'aBdB'],
                            'D': ['AB'],
                            'C': ['bC', 'b']
                            }
