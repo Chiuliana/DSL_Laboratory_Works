@@ -13,6 +13,7 @@ class Error:
         self.error_name = error_name
         self.details = details
 
+# format the error message
     def as_string(self):
         result = f'{self.error_name}: {self.details}\n'  # Formatting error message
         result += f'File {self.pos_start.fn}, line {self.pos_start.ln + 1}'  # Adding file and line information
@@ -117,7 +118,7 @@ TOKEN_PATTERNS = {
 }
 
 
-# LEXER
+# LEXER converting input text into tokens
 class Lexer:
     def __init__(self, fn, text):
         self.fn = fn
@@ -158,16 +159,17 @@ class Lexer:
                 # This is not a comment, rewind to the previous character
                 self.pos.advance(self.current_char)
 
-                # Converts input text into tokens.
+# convert input text into tokens
     def make_tokens(self):
         tokens = []
         errors = []
 
+# Skips whitespace
         while self.current_char is not None:
             # Ignore whitespace characters
             if self.current_char in ' \t':
                 self.advance()
-            # Numeric tokens
+            # handle Numeric tokens
             elif re.match(r'\d', self.current_char):
                 tokens.append(self.make_number())
             # Operator tokens
