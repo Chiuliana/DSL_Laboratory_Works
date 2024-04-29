@@ -61,6 +61,7 @@ def parser(tokens):
     root = Node("expression")
     current_node = root
     brackets_stack = []
+    stack_len = 0
     flag = False
     for token in tokens:
         if token.type == TokenType.LPAREN:
@@ -77,6 +78,7 @@ def parser(tokens):
             last_node.parent = None
             current_node = Node("multiply", parent=current_node)
             last_node.parent = current_node
+            stack_len = len(brackets_stack)
             flag = True
 
         elif token.type == TokenType.DIVIDE:
@@ -84,12 +86,17 @@ def parser(tokens):
             last_node.parent = None
             current_node = Node("divide", parent=current_node)
             last_node.parent = current_node
+            stack_len = len(brackets_stack)
             flag = True
+
+        elif token.type in [TokenType.PLUS, TokenType.MINUS] and stack_len > len(brackets_stack):
+            current_node = current_node.parent
+            Node(token.value, parent=current_node)
+            flag = False
 
         else:
             Node(token.value, parent=current_node)
-
-            if flag:
+            if flag and stack_len == len(brackets_stack):
                 current_node = current_node.parent
                 flag = False
 
